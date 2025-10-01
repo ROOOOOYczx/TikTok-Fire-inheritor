@@ -1,0 +1,21 @@
+{
+  "browser": {
+    "channel": "Chrome",
+    "headless": false,
+    "args": ["--disable-blink-features=AutomationControlled"]
+  },
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "receiver_name": "替换成需要续火的人的昵称",
+    "message": {
+    "type": "auto_fire", 
+    "//type":"可选择auto_fire(自动续火) 或 custom(自定义)     当type为custom时使用的自定义文本",
+    "custom_text": "为了抖音的火花，为了奶龙！！！",   
+    "date_format": "%Y年%m月%d日  %H:%M:%S"
+  },
+  "wait_time_before_close": 10000,
+  "timeout": 5000
+}
