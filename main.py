@@ -2,15 +2,16 @@ import json
 import datetime as dt
 from playwright.sync_api import sync_playwright
 from datetime import datetime
+import time
+import argparse
 
-
-def load_config():
+def load_config(config_file='config.json'):
     """加载配置文件"""
     try:
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open(config_file, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        print("config.json 文件未找到，使用默认配置")
+        print(f"{config_file} 文件未找到，使用默认配置")
         return {
             "browser": {
                 "channel": "msedge",
@@ -33,15 +34,15 @@ def load_config():
             "timeout": 5000
         }
     except json.JSONDecodeError:
-        print("config.json 文件格式错误，使用默认配置")
+        print(f"{config_file} 文件格式错误，使用默认配置")
         return None
 
 def get_auto_fire_message(date_format="%Y年%m月%d日"):        #生成自动续火消息
     current_date = dt.datetime.now().strftime(date_format)
     return f"[自动续火] {current_date}"
 
-def douyin_auto_login():
-    config = load_config()
+def douyin_auto_login(config_file='config.json', cookies_file='cookies.json'):
+    config = load_config(config_file)
     if config is None:
         return
     
@@ -66,19 +67,19 @@ def douyin_auto_login():
             viewport=config["viewport"]
         )
         
-        # 从 cookies.json 文件加载 cookies
+        # 从 cookies 文件加载 cookies
         try:
-            with open('cookies.json', 'r', encoding='utf-8') as f:
+            with open(cookies_file, 'r', encoding='utf-8') as f:
                 cookies = json.load(f)
             
             # 添加 cookies 到浏览器上下文
             context.add_cookies(cookies)
-            print("Cookies 加载成功！")
+            print(f"Cookies 加载成功！(文件: {cookies_file})")
         except FileNotFoundError:
-            print("cookies.json 文件未找到，请确保文件存在")
+            print(f"{cookies_file} 文件未找到，请确保文件存在")
             return
         except json.JSONDecodeError:
-            print("cookies.json 文件格式错误")
+            print(f"{cookies_file} 文件格式错误")
             return
         
         # 创建新页面
@@ -90,13 +91,21 @@ def douyin_auto_login():
             
             # 等待页面加载
             page.wait_for_timeout(1000)
-            
+            html_content = page.content()
+
+            if "未登录" in html_content:
+                login_state = False
+            else:
+                login_state = True
             # 检查是否成功登录
-            login_button = page.get_by_text("取消")
-            if login_button.is_visible():
+
+            if login_state == True:
                 print("登录成功！检测到用户信息。")
+                cancel_button = page.get_by_text("取消")
                 # 进行续火操作
-                login_button.click()
+                if cancel_button.is_visible():
+                    cancel_button.click()
+
                 message_button = page.get_by_text("私信")
                 message_button.click()
                 
@@ -136,7 +145,66 @@ def douyin_auto_login():
         finally:
             browser.close()
 
+def run_scheduled_task(config_file='config.json', cookies_file='cookies.json'):
+    """持续运行，每天凌晨4点执行任务"""
+    last_run_date = None
+    
+    print("=" * 50)
+    print("程序已启动，将在每天凌晨4点自动执行任务")
+    print(f"配置文件: {config_file}")
+    print(f"Cookies文件: {cookies_file}")
+    print("=" * 50)
+    
+    while True:
+        try:
+            now = datetime.now()
+            current_date = now.date()
+            current_hour = now.hour
+            current_minute = now.minute
+            
+            # 检查是否到达凌晨4点（4:00-4:01之间）且今天还未执行过
+            if current_hour == 4 and current_minute == 0 and last_run_date != current_date:
+                print(f"\n[{now.strftime('%Y-%m-%d %H:%M:%S')}] 开始执行定时任务...")
+                douyin_auto_login(config_file, cookies_file)
+                last_run_date = current_date
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务执行完成，等待下一次执行...")
+            
+            # 每分钟检查一次时间
+            time.sleep(60)
+            
+        except KeyboardInterrupt:
+            print("\n程序已被用户中断")
+            break
+        except Exception as e:
+            print(f"运行出错: {e}")
+            print("60秒后继续...")
+            time.sleep(60)
 
 if __name__ == "__main__":
-    load_config()
-    douyin_auto_login()
+    parser = argparse.ArgumentParser(description='抖音自动续火程序 - 每天凌晨4点自动执行')
+    parser.add_argument('--config', '-c', 
+                        default='config.json', 
+                        help='配置文件路径 (默认: config.json)')
+    parser.add_argument('--cookies', '-k', 
+                        default='cookies.json', 
+                        help='Cookies文件路径 (默认: cookies.json)')
+    parser.add_argument('--run-now', '-r', 
+                        action='store_true', 
+                        help='立即执行一次任务（不等待定时）')
+    
+    args = parser.parse_args()
+    
+    if args.run_now:
+        print("=" * 50)
+        print("立即执行模式")
+        print(f"配置文件: {args.config}")
+        print(f"Cookies文件: {args.cookies}")
+        print("=" * 50)
+        douyin_auto_login(args.config, args.cookies)
+    else:
+        run_scheduled_task(args.config, args.cookies)
+
+
+
+
+
