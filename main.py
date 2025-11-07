@@ -111,7 +111,7 @@ def douyin_auto_login(config_file='config.json', cookies_file='cookies.json'):
                 
                 page.wait_for_timeout(5000)
                 # 使用配置的接收者名称
-                receiver_name = page.get_by_text(config["receiver_name"])
+                receiver_name = page.locator(f'div:text-is("{config["receiver_name"]}")')
                 if receiver_name.is_visible():
                     print(f"找到了续火人: {config['receiver_name']}")
                     receiver_name.click()
@@ -203,6 +203,7 @@ if __name__ == "__main__":
         douyin_auto_login(args.config, args.cookies)
     else:
         run_scheduled_task(args.config, args.cookies)
+
 
 
 
